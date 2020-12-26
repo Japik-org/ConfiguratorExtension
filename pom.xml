@@ -12,7 +12,7 @@
         <dependency>
             <groupId>com.pro100kryto.server</groupId>
             <artifactId>Server</artifactId>
-            <scope>compile</scope>
+            <scope>provided</scope>
             <version>[0.1, 0.2)</version>
         </dependency>
     </dependencies>
