@@ -5,6 +5,7 @@ import com.pro100kryto.server.Server;
 import com.pro100kryto.server.StartStopStatus;
 import com.pro100kryto.server.extension.IExtension;
 import com.pro100kryto.server.extensions.configurator.XmlConfigurator;
+import com.pro100kryto.server.logger.ILogger;
 
 import java.io.File;
 
@@ -12,10 +13,12 @@ public class ConfiguratorExtension implements IExtension {
     private final IServerControl serverControl;
     private final XmlConfigurator configurator;
     private StartStopStatus status = StartStopStatus.STOPPED;
+    private final ILogger logger;
 
     public ConfiguratorExtension(IServerControl serverControl) {
         this.serverControl = serverControl;
-        configurator = new XmlConfigurator(serverControl, 15);
+        logger = serverControl.getLoggerManager().createLogger("Configurator");
+        configurator = new XmlConfigurator(serverControl, 15, logger);
     }
 
     @Override

@@ -12,8 +12,7 @@
         <dependency>
             <groupId>com.pro100kryto.server</groupId>
             <artifactId>Server</artifactId>
-            <scope>provided</scope>
-            <version>[0.1, 0.2)</version>
+            <version>[0.2.0-SNAPSHOT, 0.3.0)</version>
         </dependency>
         <dependency>
             <groupId>org.jetbrains</groupId>

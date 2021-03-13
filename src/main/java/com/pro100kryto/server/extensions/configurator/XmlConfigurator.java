@@ -1,6 +1,8 @@
 package com.pro100kryto.server.extensions.configurator;
 
 import com.pro100kryto.server.IServerControl;
+import com.pro100kryto.server.Server;
+import com.pro100kryto.server.logger.ILogger;
 import com.pro100kryto.server.module.IModule;
 import com.pro100kryto.server.service.IServiceControl;
 import org.jetbrains.annotations.Nullable;
@@ -24,10 +26,12 @@ public final class XmlConfigurator {
     private int maxCountRecursion;
     private File fileConfigs = null;
     private Document document = null;
+    private final ILogger logger;
 
-    public XmlConfigurator(IServerControl serverControl, int maxCountRecursion) {
+    public XmlConfigurator(IServerControl serverControl, int maxCountRecursion, ILogger logger) {
         this.serverControl = serverControl;
         this.maxCountRecursion = maxCountRecursion;
+        this.logger = logger;
     }
 
     public void setMaxCountRecursion(int maxCountRecursion) {
@@ -59,78 +63,159 @@ public final class XmlConfigurator {
         if (document==null)
             throw new IllegalStateException("Configs not loaded");
 
-        Element elServer = document.getDocumentElement();
-        Element elServices = (Element) elServer.getElementsByTagName("services").item(0);
-        checkDelayAttr(elServices);
-        NodeList nodeListService = elServices.getElementsByTagName("service");
+        // server
+        final Element elServer = document.getDocumentElement();
 
+        // server - baseLibs
+        if (elServer.getElementsByTagName("baseLibs").getLength() != 0){
+            final NodeList nodeListBaseLibs = elServer.getElementsByTagName("baseLibs");
+            for (int i = 0; i < nodeListBaseLibs.getLength(); i++) {
+                if (nodeListBaseLibs.item(i).getNodeType() != Node.ELEMENT_NODE) continue;
+                final Element elBaseLibs = (Element) nodeListBaseLibs.item(i);
+                final NodeList nodeListBaseLib = elBaseLibs.getElementsByTagName("baseLib");
+                for (int j = 0; j < nodeListBaseLib.getLength(); j++) {
+                    if (nodeListBaseLib.item(j).getNodeType() != Node.ELEMENT_NODE) continue;
+                    final Element elBaseLib = (Element) nodeListBaseLib.item(j);
+                    final String libPath = elBaseLib.getAttribute("path");
+                    if (libPath.isEmpty()) continue;
+
+                    final File fileBaseLib = createFileLib(libPath);
+                    serverControl.addBaseLib(fileBaseLib.toURI().toURL());
+                }
+            }
+        }
+
+        // server - settings
+        if (elServer.getElementsByTagName("settings").getLength()!=0)
+        {
+            final Element elServerSettings = (Element) elServer.getElementsByTagName("settings").item(0);
+            final NodeList nodeListSetting = elServerSettings.getElementsByTagName("setting");
+
+            for (int i = 0; i < nodeListSetting.getLength(); i++) {
+                if (nodeListSetting.item(i).getNodeType() != Node.ELEMENT_NODE) continue;
+                final Element elementSetting = (Element) nodeListSetting.item(i);
+                final String settingKey = elementSetting.getAttribute("key");
+                final String settingVal = elementSetting.getAttribute("val");
+                serverControl.setSetting(settingKey, settingVal);
+            }
+        }
+
+        // server - services
+        final Element elServices = (Element) elServer.getElementsByTagName("services").item(0);
+        checkDelayAttr(elServices);
+
+        // server - services - baseLibs
+        if (elServices.getElementsByTagName("baseLibs").getLength() != 0){
+            final NodeList nodeListBaseLibs = elServices.getElementsByTagName("baseLibs");
+            for (int i = 0; i < nodeListBaseLibs.getLength(); i++) {
+                if (nodeListBaseLibs.item(i).getNodeType() != Node.ELEMENT_NODE) continue;
+                final Element elBaseLibs = (Element) nodeListBaseLibs.item(i);
+                final NodeList nodeListBaseLib = elBaseLibs.getElementsByTagName("baseLib");
+                for (int j = 0; j < nodeListBaseLib.getLength(); j++) {
+                    if (nodeListBaseLib.item(j).getNodeType() != Node.ELEMENT_NODE) continue;
+                    final Element elBaseLib = (Element) nodeListBaseLib.item(j);
+                    final String libPath = elBaseLib.getAttribute("path");
+                    if (libPath.isEmpty()) continue;
+
+                    final File fileBaseLib = createFileLib(libPath);
+                    serverControl.addBaseLib(fileBaseLib.toURI().toURL());
+                }
+            }
+        }
+
+        // server -  services - service
+        final NodeList nodeListService = elServices.getElementsByTagName("service");
         for (int i = 0; i < nodeListService.getLength(); i++) {
-            Element elService = (Element) nodeListService.item(i);
-            String serviceName = elService.getAttribute("name");
-            String serviceType = elService.getAttribute("type");
+            if (nodeListService.item(i).getNodeType() != Node.ELEMENT_NODE) continue;
+            final Element elService = (Element) nodeListService.item(i);
+            final String serviceName = elService.getAttribute("name");
+            final String serviceType = elService.getAttribute("type");
 
             checkDelayAttr(elService);
 
-            IServiceControl serviceControl =
+            final IServiceControl serviceControl =
                     serverControl.getServiceManager().createService(serviceType, serviceName);
 
-            NodeList nodeListServiceElements = elService.getChildNodes();
+            // server - services - service - baseLibs
+            if (elService.getElementsByTagName("baseLibs").getLength() != 0){
+                final NodeList nodeListBaseLibs = elService.getElementsByTagName("baseLibs");
+                for (int j = 0; j < nodeListBaseLibs.getLength(); j++) {
+                    if (nodeListBaseLibs.item(j).getNodeType() != Node.ELEMENT_NODE) continue;
+                    final Element elBaseLibs = (Element) nodeListBaseLibs.item(j);
+                    final NodeList nodeListBaseLib = elBaseLibs.getElementsByTagName("baseLib");
+                    for (int k = 0; k < nodeListBaseLib.getLength(); k++) {
+                        if (nodeListBaseLib.item(k).getNodeType() != Node.ELEMENT_NODE) continue;
+                        final Element elBaseLib = (Element) nodeListBaseLib.item(k);
+                        final String libPath = elBaseLib.getAttribute("path");
+                        if (libPath.isEmpty()) continue;
 
-            for (int j = 0; j < nodeListServiceElements.getLength(); j++) {
-                if (nodeListServiceElements.item(j).getNodeType() != Node.ELEMENT_NODE) continue;
-                Element elServiceElement = (Element) nodeListServiceElements.item(j);
-                checkDelayAttr(elServiceElement);
-
-                switch (elServiceElement.getTagName()){
-                    case "modules":
-                        {
-                            NodeList nodeListModule = elServiceElement.getChildNodes();
-                            for (int k = 0; k < nodeListModule.getLength(); k++) {
-                                if (nodeListModule.item(k).getNodeType() != Node.ELEMENT_NODE) continue;
-                                Element elModule = (Element) nodeListModule.item(k);
-
-                                IModule module = serviceControl.createModule(
-                                        elModule.getAttribute("type"),
-                                        elModule.getAttribute("name")
-                                );
-
-                                NodeList nodeListModuleElements = elModule.getChildNodes();
-                                for (int l = 0; l < nodeListModuleElements.getLength(); l++) {
-                                    if (nodeListModuleElements.item(l).getNodeType() != Node.ELEMENT_NODE) continue;
-                                    Element elModuleEl = (Element) nodeListModuleElements.item(l);
-
-                                    if (elModuleEl.getTagName().equals("settings")) {
-
-                                        Map<String, String> settings = new HashMap<>(nodeListModuleElements.getLength());
-                                        NodeList nodeListSetting = elModuleEl.getChildNodes();
-
-                                        for (int m = 0; m < nodeListSetting.getLength(); m++) {
-                                            if (nodeListSetting.item(m).getNodeType() != Node.ELEMENT_NODE) continue;
-                                            Element elSetting = (Element) nodeListSetting.item(m);
-                                            settings.put(
-                                                    elSetting.getAttribute("key"),
-                                                    elSetting.getAttribute("val")
-                                            );
-                                        }
-
-                                        module.setSettings(settings);
-                                    }
-                                }
-                            }
-                        }
-                        break;
-                    case "settings":
-                        {
-                            Map<String, String> settings = new HashMap<>();
-                            // ...
-                            //serviceControl.setSettings(settings);
-                        }
-                        break;
-                    default:
-                        throw new UnsupportedOperationException("Unsupported tag '"+elServiceElement.getTagName()+"'");
+                        final File fileBaseLib = createFileLib(libPath);
+                        serviceControl.addBaseLib(fileBaseLib.toURI().toURL());
+                    }
                 }
-                checkOnLoadAttr(elServiceElement);
             }
+
+            // server - services - service - settings
+            if (elService.getElementsByTagName("settings").getLength() != 0){
+                final NodeList nodeListSettings = elService.getElementsByTagName("settings");
+                for (int j = 0; j < nodeListSettings.getLength(); j++) {
+                    if (nodeListSettings.item(j).getNodeType() != Node.ELEMENT_NODE) continue;
+                    final Element elSettings = (Element) nodeListSettings.item(j);
+                    final NodeList nodeListSetting = elSettings.getElementsByTagName("setting");
+                    for (int k = 0; k < nodeListSetting.getLength(); k++) {
+                        if (nodeListSetting.item(k).getNodeType() != Node.ELEMENT_NODE) continue;
+                        final Element elSetting = (Element) nodeListSetting.item(k);
+                        final String settingKey = elSetting.getAttribute("key");
+                        final String settingVal = elSetting.getAttribute("val");
+                        serviceControl.setSetting(settingKey, settingVal);
+                    }
+                }
+            }
+
+            // server - services - service - modules
+            if (elService.getElementsByTagName("modules").getLength() != 0){
+                final NodeList nodeListModules = elService.getElementsByTagName("modules");
+                for (int j = 0; j < nodeListModules.getLength(); j++) {
+                    if (nodeListModules.item(j).getNodeType() != Node.ELEMENT_NODE) continue;
+                    final Element elModules = (Element) nodeListModules.item(j);
+                    final NodeList nodeListModule = elModules.getElementsByTagName("module");
+                    for (int k = 0; k < nodeListModule.getLength(); k++) {
+                        if (nodeListModule.item(k).getNodeType() != Node.ELEMENT_NODE) continue;
+                        final Element elModule = (Element) nodeListModule.item(k);
+
+                        final IModule module = serviceControl.createModule(
+                                elModule.getAttribute("type"),
+                                elModule.getAttribute("name")
+                        );
+
+                        final NodeList nodeListModuleElements = elModule.getChildNodes();
+                        for (int l = 0; l < nodeListModuleElements.getLength(); l++) {
+                            if (nodeListModuleElements.item(l).getNodeType() != Node.ELEMENT_NODE) continue;
+                            final Element elModuleEl = (Element) nodeListModuleElements.item(l);
+
+                            if (elModuleEl.getTagName().equals("settings")) {
+
+                                final Map<String, String> settings = new HashMap<>(nodeListModuleElements.getLength());
+                                final NodeList nodeListSetting = elModuleEl.getChildNodes();
+
+                                for (int m = 0; m < nodeListSetting.getLength(); m++) {
+                                    if (nodeListSetting.item(m).getNodeType() != Node.ELEMENT_NODE) continue;
+                                    final Element elSetting = (Element) nodeListSetting.item(m);
+                                    settings.put(
+                                            elSetting.getAttribute("key"),
+                                            elSetting.getAttribute("val")
+                                    );
+                                }
+
+                                module.setSettings(settings);
+                            }
+                            checkDelayAttr(elModule);
+                        }
+                        checkDelayAttr(elModules);
+                    }
+                }
+            }
+
             checkOnLoadAttr(elService);
         }
         checkOnLoadAttr(elServices);
@@ -223,7 +308,7 @@ public final class XmlConfigurator {
     // --------------
 
     private void checkOnLoadAttr(Element element) throws Throwable {
-        if (element.hasAttribute("onLoad"))
+        if (element.hasAttribute("onLoad")) // TODO: rename attr to "actionAfter", add attr "actionBefore"
             execAction(element.getAttribute("onLoad"));
     }
 
@@ -233,5 +318,16 @@ public final class XmlConfigurator {
             int delay = Integer.parseInt(delayStr);
             Thread.sleep(delay);
         }
+    }
+
+    private File createFileLib(final String path){
+        final File fileLib = new File(
+                path.startsWith("file:") ?
+                        path :
+                        Server.getInstance().getWorkingPath() + File.separator
+                                + "core" + File.separator
+                                + path.replace("/", File.separator).replace("\\", File.separator));
+        if (!fileLib.exists()) logger.writeWarn("\""+path + "\" not found");
+        return fileLib;
     }
 }
