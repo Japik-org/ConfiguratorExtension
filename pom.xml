@@ -6,7 +6,7 @@
 
     <groupId>com.pro100kryto.server.extensions</groupId>
     <artifactId>ConfiguratorExtension</artifactId>
-    <version>0.1</version>
+    <version>0.2-SNAPSHOT</version>
 
     <dependencies>
         <dependency>
@@ -16,10 +16,9 @@
             <version>[0.1, 0.2)</version>
         </dependency>
         <dependency>
-            <groupId>com.sun.istack</groupId>
-            <artifactId>istack-commons-runtime</artifactId>
-            <version>4.0.0</version>
-            <scope>provided</scope>
+            <groupId>org.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
+            <version>13.0</version>
         </dependency>
     </dependencies>
 

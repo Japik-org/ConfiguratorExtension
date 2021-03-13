@@ -3,7 +3,7 @@ package com.pro100kryto.server.extensions.configurator;
 import com.pro100kryto.server.IServerControl;
 import com.pro100kryto.server.module.IModule;
 import com.pro100kryto.server.service.IServiceControl;
-import com.sun.istack.Nullable;
+import org.jetbrains.annotations.Nullable;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
