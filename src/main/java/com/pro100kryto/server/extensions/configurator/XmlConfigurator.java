@@ -2,6 +2,7 @@ package com.pro100kryto.server.extensions.configurator;
 
 import com.pro100kryto.server.IServerControl;
 import com.pro100kryto.server.Server;
+import com.pro100kryto.server.UtilsInternal;
 import com.pro100kryto.server.logger.ILogger;
 import com.pro100kryto.server.module.IModule;
 import com.pro100kryto.server.service.IServiceControl;
@@ -18,6 +19,8 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.URL;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -72,15 +75,28 @@ public final class XmlConfigurator {
             for (int i = 0; i < nodeListBaseLibs.getLength(); i++) {
                 if (nodeListBaseLibs.item(i).getNodeType() != Node.ELEMENT_NODE) continue;
                 final Element elBaseLibs = (Element) nodeListBaseLibs.item(i);
+                if (!elBaseLibs.getParentNode().getNodeName().equals(elServer.getNodeName())) continue;
                 final NodeList nodeListBaseLib = elBaseLibs.getElementsByTagName("baseLib");
                 for (int j = 0; j < nodeListBaseLib.getLength(); j++) {
                     if (nodeListBaseLib.item(j).getNodeType() != Node.ELEMENT_NODE) continue;
                     final Element elBaseLib = (Element) nodeListBaseLib.item(j);
                     final String libPath = elBaseLib.getAttribute("path");
+                    final boolean addRecursive =
+                            elBaseLib.hasAttribute("recursive") &&
+                            elBaseLib.getAttribute("recursive").equals("true");
                     if (libPath.isEmpty()) continue;
 
                     final File fileBaseLib = createFileLib(libPath);
-                    serverControl.addBaseLib(fileBaseLib.toURI().toURL());
+                    if (addRecursive){
+                        final ArrayList<URL> urlList = new ArrayList<>();
+                        UtilsInternal.readJarClassPathAndCheck(logger, fileBaseLib, urlList);
+                        for (final URL url : urlList) {
+                            serverControl.addBaseLib(url);
+                        }
+                    }
+                    else {
+                        serverControl.addBaseLib(fileBaseLib.toURI().toURL());
+                    }
                 }
             }
         }
@@ -110,15 +126,28 @@ public final class XmlConfigurator {
             for (int i = 0; i < nodeListBaseLibs.getLength(); i++) {
                 if (nodeListBaseLibs.item(i).getNodeType() != Node.ELEMENT_NODE) continue;
                 final Element elBaseLibs = (Element) nodeListBaseLibs.item(i);
+                if (!elBaseLibs.getParentNode().getNodeName().equals(elServices.getNodeName())) continue;
                 final NodeList nodeListBaseLib = elBaseLibs.getElementsByTagName("baseLib");
                 for (int j = 0; j < nodeListBaseLib.getLength(); j++) {
                     if (nodeListBaseLib.item(j).getNodeType() != Node.ELEMENT_NODE) continue;
                     final Element elBaseLib = (Element) nodeListBaseLib.item(j);
                     final String libPath = elBaseLib.getAttribute("path");
+                    final boolean addRecursive =
+                            elBaseLib.hasAttribute("recursive") &&
+                                    elBaseLib.getAttribute("recursive").equals("true");
                     if (libPath.isEmpty()) continue;
 
                     final File fileBaseLib = createFileLib(libPath);
-                    serverControl.addBaseLib(fileBaseLib.toURI().toURL());
+                    if (addRecursive){
+                        final ArrayList<URL> urlList = new ArrayList<>();
+                        UtilsInternal.readJarClassPathAndCheck(logger, fileBaseLib, urlList);
+                        for (final URL url : urlList) {
+                            serverControl.getServiceManager().addBaseLib(url);
+                        }
+                    }
+                    else {
+                        serverControl.getServiceManager().addBaseLib(fileBaseLib.toURI().toURL());
+                    }
                 }
             }
         }
@@ -142,15 +171,28 @@ public final class XmlConfigurator {
                 for (int j = 0; j < nodeListBaseLibs.getLength(); j++) {
                     if (nodeListBaseLibs.item(j).getNodeType() != Node.ELEMENT_NODE) continue;
                     final Element elBaseLibs = (Element) nodeListBaseLibs.item(j);
+                    if (!elBaseLibs.getParentNode().getNodeName().equals(elService.getNodeName())) continue;
                     final NodeList nodeListBaseLib = elBaseLibs.getElementsByTagName("baseLib");
                     for (int k = 0; k < nodeListBaseLib.getLength(); k++) {
                         if (nodeListBaseLib.item(k).getNodeType() != Node.ELEMENT_NODE) continue;
                         final Element elBaseLib = (Element) nodeListBaseLib.item(k);
                         final String libPath = elBaseLib.getAttribute("path");
+                        final boolean addRecursive =
+                                elBaseLib.hasAttribute("recursive") &&
+                                        elBaseLib.getAttribute("recursive").equals("true");
                         if (libPath.isEmpty()) continue;
 
                         final File fileBaseLib = createFileLib(libPath);
-                        serviceControl.addBaseLib(fileBaseLib.toURI().toURL());
+                        if (addRecursive){
+                            final ArrayList<URL> urlList = new ArrayList<>();
+                            UtilsInternal.readJarClassPathAndCheck(logger, fileBaseLib, urlList);
+                            for (final URL url : urlList) {
+                                serviceControl.addBaseLib(url);
+                            }
+                        }
+                        else {
+                            serviceControl.addBaseLib(fileBaseLib.toURI().toURL());
+                        }
                     }
                 }
             }
